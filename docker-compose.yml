@@ -1,0 +1,29 @@
+services:
+  mongo:
+    image: mongo:6
+    container_name: issue-mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    environment:
+      PORT: "4000"
+      MONGO_URI: "mongodb://mongo:27017/issue_tracker"
+    depends_on:
+      - mongo
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE: "http://backend:4000/api"
+    ports:
+      - "3000:80"
+
+volumes:
+  mongo_data:
