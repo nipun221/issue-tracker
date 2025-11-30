@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE || "http://localhost:4000/api";
+  import.meta.env.VITE_API_BASE || "/api";
 
 function App() {
   const [issues, setIssues] = useState([]);

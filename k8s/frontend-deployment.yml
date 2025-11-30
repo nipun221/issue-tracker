@@ -20,7 +20,7 @@ spec:
             - containerPort: 80
           env:
             - name: VITE_API_BASE
-              value: "http://backend.issue-tracker.svc.cluster.local:4000/api"
+              value: "/api"
           resources:
             limits:
               memory: "256Mi"
