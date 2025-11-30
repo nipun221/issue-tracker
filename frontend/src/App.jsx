@@ -61,7 +61,7 @@ function App() {
     >
       <div style={{ width: "100%", maxWidth: 800 }}>
         <h1 style={{ textAlign: "center", marginBottom: "1rem" }}>
-          🐞 Issue Tracker - v2
+          🐞 Issue Tracker
         </h1>
 
         <section
