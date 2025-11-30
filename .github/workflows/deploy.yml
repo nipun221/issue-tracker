@@ -1,0 +1,86 @@
+name: CI/CD to EKS
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  # These come from GitHub Actions Repository Variables
+  AWS_REGION: ${{ vars.AWS_REGION }}              
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}  
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}      
+
+  # Static values
+  K8S_NAMESPACE: issue-tracker
+  FRONTEND_REPO_NAME: issue-tracker-frontend
+  BACKEND_REPO_NAME: issue-tracker-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write    # needed for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActionsEKSRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: vars
+        run: |
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Build & push backend image
+        run: |
+          BACKEND_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO_NAME}
+          docker build -t ${BACKEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }} ./backend
+          docker push ${BACKEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }}
+
+      - name: Build & push frontend image
+        run: |
+          FRONTEND_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO_NAME}
+          docker build -t ${FRONTEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }} ./frontend
+          docker push ${FRONTEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION}
+
+      - name: Apply base manifests (namespace + mongo + svc/deploy)
+        run: |
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/mongo-deployment.yml
+          kubectl apply -f k8s/backend-deployment.yml
+          kubectl apply -f k8s/frontend-deployment.yml
+
+      - name: Update backend deployment image
+        run: |
+          BACKEND_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO_NAME}
+          kubectl set image deployment/backend \
+            backend=${BACKEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }} \
+            -n ${K8S_NAMESPACE}
+
+      - name: Update frontend deployment image
+        run: |
+          FRONTEND_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO_NAME}
+          kubectl set image deployment/frontend \
+            frontend=${FRONTEND_URI}:${{ steps.vars.outputs.IMAGE_TAG }} \
+            -n ${K8S_NAMESPACE}
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/backend -n ${K8S_NAMESPACE}
+          kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
