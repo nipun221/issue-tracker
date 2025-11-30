@@ -22,8 +22,9 @@
 
 # 🚀 Issue Tracker — Full CI/CD on AWS (ECR + EKS)
 
-### **React + Node.js + MongoDB | GitHub Actions| Docker | ECR | Kubernetes**
+## **React + Node.js + MongoDB | GitHub Actions| Docker | ECR | Kubernetes**
 
+### 🎬 Video Walkthrough (YouTube): https://youtu.be/V_LmJB9ZXu0
 This project is a **3-tier cloud-native Issue Tracker application** deployed using a **fully automated CI/CD pipeline**.
 Every push to `main` triggers GitHub Actions, which:
 
@@ -301,13 +302,6 @@ kubectl rollout status deployment/frontend -n issue-tracker
 
 * Services info: <img width="1225" height="417" alt="Screenshot_20251130_095821" src="https://github.com/user-attachments/assets/bf8ec794-1d9e-43dd-a424-191515f59a79" />
 
-
----
-
-# 🎬 **Video Walkthrough (YouTube)**
-
-Add link after upload:
-`📌 https://youtube.com/...`
 
 ---
 
