@@ -1,3 +1,25 @@
+<p align="center">
+
+  <!-- Badges -->
+  <img src="https://img.shields.io/github/actions/workflow/status/nipun221/issue-tracker/deploy.yml?label=CI%2FCD&logo=github&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/AWS-EKS-FF9900?logo=amazon-eks&logoColor=white&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/AWS-ECR-232F3E?logo=amazon-aws&logoColor=white&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/Containerized-Docker-2496ED?logo=docker&logoColor=white&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/Kubernetes-Production%20Ready-326CE5?logo=kubernetes&logoColor=white&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/Frontend-React-61DAFB?logo=react&logoColor=black&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/Backend-Node.js-339933?logo=node.js&logoColor=white&style=for-the-badge" />
+
+  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?logo=mongodb&logoColor=white&style=for-the-badge" />
+
+</p>
+
+
 # 🚀 Issue Tracker — Full CI/CD on AWS (ECR + EKS)
 
 ### **React + Node.js + MongoDB | GitHub Actions| Docker | ECR | Kubernetes**
@@ -35,6 +57,33 @@ This repository is excellent for learning real-world DevOps pipelines and modern
                 │     AWS EKS       │
                 └──────────────────┘
               (Frontend | Backend | Mongo)
+```
+
+---
+## **Professional Project Diagram: Mermaid**
+
+```
+flowchart LR
+    A[Developer Push to main] --> B[GitHub Actions]
+
+    subgraph CI/CD Pipeline
+        B --> C[Build Docker Images]
+        C --> D[Push to Amazon ECR]
+        D --> E[Update kubeconfig]
+        E --> F[Deploy to EKS via kubectl]
+    end
+
+    subgraph AWS EKS Cluster
+        F --> G[Frontend Deployment\n(React + NGINX)]
+        F --> H[Backend Deployment\n(Node.js + Express)]
+        F --> I[MongoDB Deployment]
+        
+        H --> I
+        G --> H
+    end
+
+    G --> J[(LoadBalancer Service)]
+    J --> K[End User Browser]
 ```
 
 ---
@@ -236,15 +285,22 @@ kubectl rollout status deployment/frontend -n issue-tracker
 
 ---
 
-# 📸 **Screenshots (Optional)**
+# 📸 **Screenshots**
 
-*(You can add actual screenshots later)*
+* EKS node view: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-56-56 Elastic Kubernetes Service ap-south-1" src="https://github.com/user-attachments/assets/d5e60980-182d-431b-a1d9-fc2039bbc521" />
 
-* EKS node view
-* GitHub Actions workflow success
-* UI screenshot before/after deployment
-* ECR repo
-* Service LoadBalancer URL
+* GitHub Actions workflow success: <img width="1920" height="988" alt="Screenshot 2025-11-30 at 09-54-10 title update in App jsx · nipun221_issue-tracker@48a3837" src="https://github.com/user-attachments/assets/0098e126-9a3c-49d2-ba58-7845d0a42748" />
+
+* UI screenshot after deployment: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-59-18 Issue Tracker" src="https://github.com/user-attachments/assets/5608a6c1-aed2-43df-b8de-f976458cc974" />
+
+* ECR repo: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-54-24 Elastic Container Registry - Private repositories" src="https://github.com/user-attachments/assets/7e6c45a4-8b5f-4ac7-8506-6cce166efffe" />
+
+* ECR repo backend:  <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-54-36 Elastic Container Registry - Private repository" src="https://github.com/user-attachments/assets/c25840c3-4fe0-453c-8b63-96c7ed62e45f" />
+
+* ECR repo frontend: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-54-49 Elastic Container Registry - Private repository" src="https://github.com/user-attachments/assets/d71b3540-1dd0-465a-a08b-456be641ad10" />
+
+* Services info: <img width="1225" height="417" alt="Screenshot_20251130_095821" src="https://github.com/user-attachments/assets/bf8ec794-1d9e-43dd-a424-191515f59a79" />
+
 
 ---
 
