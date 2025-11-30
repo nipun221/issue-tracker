@@ -335,13 +335,13 @@ docker run -d --name issue-mongo -p 27017:27017 mongo:6
 
 # 🎯 **What You’ll Learn From This Project**
 
-✔ GitHub Actions CI/CD
-✔ AWS IAM Roles (OIDC)
-✔ Pushing Docker images to ECR
-✔ Deploying microservices to Kubernetes
-✔ Managing multi-tier applications in EKS
-✔ DNS-based service discovery
-✔ Infrastructure as Code (EKSctl)
+1. GitHub Actions CI/CD
+2. AWS IAM Roles (OIDC)
+3. Pushing Docker images to ECR
+4. Deploying microservices to Kubernetes
+5. Managing multi-tier applications in EKS
+6. DNS-based service discovery
+7. Infrastructure as Code (EKSctl)
 
 ---
 
