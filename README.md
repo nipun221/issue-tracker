@@ -24,7 +24,7 @@
 
 ## **React + Node.js + MongoDB | GitHub Actions| Docker | ECR | Kubernetes**
 
-### 🎬 Video Walkthrough (YouTube): https://youtu.be/V_LmJB9ZXu0
+### 🎬 Video Walkthrough (YouTube): [https://youtu.be/V_LmJB9ZXu0](https://youtu.be/xn3FOB3I4BE)
 This project is a **3-tier cloud-native Issue Tracker application** deployed using a **fully automated CI/CD pipeline**.
 Every push to `main` triggers GitHub Actions, which:
 
@@ -181,108 +181,217 @@ COPY . .
 RUN npm install && npm run build
 
 FROM nginx:alpine
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy built frontend
 COPY --from=builder /app/dist /usr/share/nginx/html
+
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+```
+
+---
+# ⚙️ AWS & Kubernetes Setup 
+
+Follow these steps **exactly**, in order.
+
+---
+
+# 1️⃣ Create ECR Repositories
+
+From your local machine (with AWS CLI configured):
+
+```bash
+aws ecr create-repository \
+  --repository-name issue-tracker-frontend \
+  --region ap-south-1
+
+aws ecr create-repository \
+  --repository-name issue-tracker-backend \
+  --region ap-south-1
 ```
 
 ---
 
-# ☸️ **Kubernetes Deployment Overview**
+# 2️⃣ Install eksctl locally
+
+```bash
+curl --silent --location "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" \
+  | tar xz -C /tmp
+
+sudo mv /tmp/eksctl /usr/local/bin
+eksctl version
+```
+
+---
+
+# 3️⃣ Create the EKS Cluster
+
+Run from your **laptop**:
+
+```bash
+eksctl create cluster \
+  --name issue-tracker-cluster \
+  --region ap-south-1 \
+  --nodegroup-name issue-tracker-nodes \
+  --node-type t3.small \
+  --nodes 2 \
+  --managed
+```
+
+When finished, confirm:
+
+```bash
+kubectl get nodes
+```
+
+---
+
+# 4️⃣ Create IAM Role for GitHub Actions (MANDATORY)
+
+### Step 1 → Add GitHub OIDC Provider
+
+In AWS IAM → **Identity providers → Add provider**
+
+* Provider: **GitHub**
+* Audience: **sts.amazonaws.com**
+
+### Step 2 → Create IAM Role `GitHubActionsEKSRole`
+
+Use “Web Identity” with the GitHub provider above.
+
+### Step 3 → Trust Policy
+
+Replace `your-org` and `your-repo`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:nipun221/issue-tracker:ref:refs/heads/main"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Step 4 → Attach Permissions Policy
+
+Attach:
+
+* AmazonEC2ContainerRegistryFullAccess
+* AmazonEKSClusterPolicy
+* AmazonEKSWorkerNodePolicy
+* AmazonEKS_CNI_Policy
+* IAMReadOnlyAccess
+* Custom inline allowing:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "eks:DescribeCluster",
+    "eks:DescribeNodegroup",
+    "eks:ListClusters"
+  ],
+  "Resource": "*"
+}
+```
+
+---
+
+# 5️⃣ Add Role to EKS (VERY IMPORTANT)
+
+```bash
+kubectl edit configmap aws-auth -n kube-system
+```
+
+Paste under `mapRoles:`:
+
+```yaml
+- rolearn: arn:aws:iam::<ACCOUNT_ID>:role/GitHubActionsEKSRole
+  username: github-actions
+  groups:
+    - system:masters
+```
+
+This gives your GitHub workflow cluster admin for deployment.
+
+---
+
+# 6️⃣ GitHub Actions Variables
+
+Add these in **Repository → Settings → Variables**:
+
+```
+AWS_REGION = ap-south-1
+AWS_ACCOUNT_ID = 15882564789
+EKS_CLUSTER_NAME = issue-tracker-cluster
+```
+
+---
+
+# 7️⃣ Deploy via GitHub Actions
+
+Push to main:
+
+```bash
+git add .
+git commit -m "trigger deployment"
+git push
+```
+
+GitHub Actions will:
+
+* build images
+* push to ECR
+* update EKS manifests
+* rollout updates
+
+---
+
+# ☸️ Kubernetes Deployment (Updated)
 
 ### MongoDB
 
-* 1 replica (demo)
-* ClusterIP service
-* `emptyDir:` storage (for demo only)
+Your demo database uses `emptyDir:` (ephemeral).
+Data resets when the Mongo pod is replaced.
 
-### Backend (Express)
+### Backend
 
-* 2 replicas
-* Talks to Mongo via DNS:
+Connects via DNS:
 
 ```
 mongodb://mongo:27017/issue_tracker
 ```
 
-### Frontend (React)
+### Frontend
 
-* Exposed using LoadBalancer service
-* Talks to backend via K8s DNS:
-
-```
-http://backend.issue-tracker.svc.cluster.local:4000/api
-```
+Served via LoadBalancer
+Backend API resolved via cluster DNS.
 
 ---
 
-# 🔐 **IAM & Security**
+# 🧪 Testing the Deployed App
 
-GitHub Actions assumes an IAM Role:
-
-```
-GitHubActionsEKSRole
-```
-
-With:
-
-* ECR Push
-* EKS Access
-* kubectl permissions
-
-This is done via AWS OIDC provider (no secrets saved).
-
----
-
-# 🧪 **How to Test the App (After Deployment)**
-
-### 1️⃣ Get frontend LB URL:
+Get the frontend URL:
 
 ```bash
 kubectl get svc -n issue-tracker
 ```
 
-Example output:
-
-```
-frontend   LoadBalancer   xxx.ap-south-1.elb.amazonaws.com   80:32471/TCP
-```
-
-### 2️⃣ Open URL
-
-You can:
-
-* Create an issue
-* View issues
-* Test end-to-end functionality
-
-Logs:
-
-```bash
-kubectl logs deployment/backend -n issue-tracker
-```
-
----
-
-# 📦 **Kubernetes Commands (Quick Reference)**
-
-### Apply All Manifests
-
-```bash
-kubectl apply -f k8s/ -n issue-tracker
-```
-
-### Check Pods
-
-```bash
-kubectl get pods -n issue-tracker
-```
-
-### Check Rollout
-
-```bash
-kubectl rollout status deployment/backend -n issue-tracker
-kubectl rollout status deployment/frontend -n issue-tracker
-```
+Open in browser → create issues → watch app work end-to-end.
 
 ---
 
@@ -292,7 +401,7 @@ kubectl rollout status deployment/frontend -n issue-tracker
 
 * GitHub Actions workflow success: <img width="1920" height="988" alt="Screenshot 2025-11-30 at 09-54-10 title update in App jsx · nipun221_issue-tracker@48a3837" src="https://github.com/user-attachments/assets/0098e126-9a3c-49d2-ba58-7845d0a42748" />
 
-* UI screenshot after deployment: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-59-18 Issue Tracker" src="https://github.com/user-attachments/assets/5608a6c1-aed2-43df-b8de-f976458cc974" />
+* UI screenshot after deployment: <img width="1920" height="1191" alt="Screenshot 2025-11-30 at 17-30-54 Issue Tracker" src="https://github.com/user-attachments/assets/ea2760a4-de2f-457b-9f69-b35af2ac80eb" />
 
 * ECR repo: <img width="1920" height="950" alt="Screenshot 2025-11-30 at 09-54-24 Elastic Container Registry - Private repositories" src="https://github.com/user-attachments/assets/7e6c45a4-8b5f-4ac7-8506-6cce166efffe" />
 
@@ -305,31 +414,38 @@ kubectl rollout status deployment/frontend -n issue-tracker
 
 ---
 
-# 🚀 **How to Reproduce This Project (Local Setup)**
+# 🗑 Cleaning Up (To Stop Billing)
 
-### 1️⃣ Clone repo
+Run these **in exact order**:
 
-```bash
-git clone https://github.com/<your-username>/issue-tracker.git
-```
-
-### 2️⃣ Start backend
+### 1. Delete workloads & namespace
 
 ```bash
-cd backend && npm install && npm run dev
+kubectl delete namespace issue-tracker
 ```
 
-### 3️⃣ Start frontend
+### 2. Delete EKS cluster
 
 ```bash
-cd frontend && npm install && npm run dev
+eksctl delete cluster \
+  --name issue-tracker-cluster \
+  --region ap-south-1
 ```
 
-### 4️⃣ Local Mongo
+### 3. Delete ECR repos
 
 ```bash
-docker run -d --name issue-mongo -p 27017:27017 mongo:6
+aws ecr delete-repository --repository-name issue-tracker-frontend --force --region ap-south-1
+aws ecr delete-repository --repository-name issue-tracker-backend --force --region ap-south-1
 ```
+
+### 4. Delete IAM role
+
+Manually delete `GitHubActionsEKSRole` in AWS console.
+
+### 5. Do NOT delete Default VPC
+
+AWS recreates it automatically → leave it.
 
 ---
 
